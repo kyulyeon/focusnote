@@ -34,7 +34,7 @@ else:  # Linux
         print("⚠️  PyAudio not found. Install with: pip install pyaudio")
         sys.exit(1)
 
-class FocusNoteBackend:
+class AudioCapture:
     def __init__(self, output_dir="meeting_recordings"):
         self.output_dir = output_dir
         self.is_recording = False
@@ -552,7 +552,7 @@ def main():
     parser.add_argument('--manual', action='store_true', help='Manual mode')
     args = parser.parse_args()
     
-    backend = FocusNoteBackend()
+    backend = AudioCapture()
     
     if args.test:
         print("\n🧪 Test recording for 10 seconds...")

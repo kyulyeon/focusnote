@@ -1,14 +1,27 @@
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QPushButton, QLabel, QGroupBox, QCheckBox
+    QMainWindow, QWidget, QVBoxLayout, QPushButton, QLabel, QGroupBox, QCheckBox, QComboBox
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
+from detection.detect_record import AudioCapture
+from audio.audio_thread import AudioCaptureThread
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.audio_capture = AudioCapture()
+        self.capture_thread = AudioCaptureThread(self.audio_capture)
+        
         self.init_ui()
+        
+        # Set up status update timer
+        self.status_timer = QTimer()
+        self.status_timer.timeout.connect(self.update_status)
+        self.status_timer.start(1000)  # Update every second
+        
+        # Start the capture thread
+        self.capture_thread.start()
         
     def init_ui(self):
         """Initialize the user interface"""
@@ -45,19 +58,6 @@ class MainWindow(QMainWindow):
         status_group.setLayout(status_layout)
         main_layout.addWidget(status_group)
         
-        # Start monitoring button
-        start_button_group = QGroupBox()
-        start_button_layout = QVBoxLayout()
-
-        self.start_btn = QPushButton("Start Monitoring")
-        self.start_btn.setStyleSheet("background-color: #4CAF50; color: white; font-size: 14px;")
-        self.start_btn.clicked.connect(self.on_start_clicked)
-        start_button_layout.addWidget(self.start_btn)
-
-        start_button_group.setLayout(start_button_layout)
-        start_button_group.setStyleSheet("QGroupBox { border: none; }")
-        main_layout.addWidget(start_button_group)
-        
         # Settings section
         settings_group = QGroupBox("Settings")
         settings_layout = QVBoxLayout()
@@ -71,11 +71,46 @@ class MainWindow(QMainWindow):
         
         # Push everything to the top
         main_layout.addStretch()
+    
+    def update_status(self):
+        """Periodically check and update all status labels"""
+        # Check Discord status
+        discord_active, discord_name, discord_cpu = self.audio_capture.detect_discord_call()
+        if discord_active:
+            self.discord_status_label.setText(f"Discord: Detected ✓ ({discord_cpu:.1f}% CPU)")
+            self.discord_status_label.setStyleSheet("color: green;")
+        else:
+            self.discord_status_label.setText("Discord: Not detected")
+            self.discord_status_label.setStyleSheet("color: gray;")
         
-    def on_start_clicked(self):
-        """Handle start button click"""
-        pass
+        # Check Zoom status
+        zoom_active, zoom_name, zoom_cpu = self.audio_capture.detect_zoom_call()
+        if zoom_active:
+            self.zoom_status_label.setText(f"Zoom: Detected ✓ ({zoom_cpu:.1f}% CPU)")
+            self.zoom_status_label.setStyleSheet("color: green;")
+        else:
+            self.zoom_status_label.setText("Zoom: Not detected")
+            self.zoom_status_label.setStyleSheet("color: gray;")
+        
+        # Check recording status
+        is_recording = self.audio_capture.is_recording
+        platform = self.audio_capture.active_platform
+        
+        if is_recording and platform:
+            self.status_label.setText(f"Status: Recording {platform.upper()}")
+            self.status_label.setStyleSheet("color: red; font-weight: bold;")
+        elif self.audio_capture.running:
+            self.status_label.setText("Status: Monitoring")
+            self.status_label.setStyleSheet("color: blue;")
+        else:
+            self.status_label.setText("Status: Idle")
+            self.status_label.setStyleSheet("color: gray;")
     
     def on_auto_start_changed(self, state):
         """Handle auto-start checkbox change"""
         pass
+
+    def closeEvent(self, event):
+        self.status_timer.stop()
+        self.capture_thread.stop()
+        event.accept()
