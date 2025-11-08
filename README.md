@@ -1,15 +1,14 @@
-# Call Transcriber
+# Focusnote
 
-Desktop application for transcribing Discord and Zoom calls in real-time.
+Desktop application for creating meeting minutes, summaries, or action items from calls, meetings, and presentations.
 
 ## Features
 - Detects active calls on Discord and Zoom
 - Real-time speech-to-text transcription
-- Sends transcriptions to microservice
+- AI-powered summarization, meeting minutes and action items creation
 
 ## Prerequisites
 - Python 3.9+
-- Virtual audio device (VB-Cable for Windows, BlackHole for macOS)
 
 ## Installation
 
@@ -51,7 +50,3 @@ call-transcriber/
 ├── docs/                    # Documentation
 └── requirements.txt         # Dependencies
 ```
-
-## License
-
-MIT
