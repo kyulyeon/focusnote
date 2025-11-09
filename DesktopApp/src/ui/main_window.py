@@ -23,13 +23,13 @@ class MainWindow(QMainWindow):
         self.audio_capture = AudioCapture()
         self.capture_thread = AudioCaptureThread(self.audio_capture)
 
-        # # Setup WebSocket transcription client
-        # self.transcription_client = TranscriptionWebSocketClient(
-        #     self.audio_capture,
-        #     server_url="ws://localhost:17483"
-        # )
-        # self.transcription_client.start()
-        
+        # Setup WebSocket transcription client
+        self.transcription_client = TranscriptionWebSocketClient(
+            self.audio_capture,
+            server_url="ws://localhost:17483"
+        )
+        self.transcription_client.start()
+
         self.init_ui()
         self.apply_styles()
 
@@ -331,6 +331,6 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         """Clean up when window is closed"""
         self.status_timer.stop()
-        # self.transcription_client.stop()
+        self.transcription_client.stop()
         self.capture_thread.stop()
         event.accept()
