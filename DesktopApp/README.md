@@ -37,7 +37,7 @@ pytest
 
 ## Project Structure
 ```
-call-transcriber/
+focusnote/
 ├── src/
 │   ├── main.py              # Application entry point
 │   ├── ui/                  # PyQt6 UI components
