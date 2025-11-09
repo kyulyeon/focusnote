@@ -1,9 +1,23 @@
 #!/bin/bash
 
 echo "Starting transcription server, meeting microservice & desktop app"
+echo "Installing/updating dependencies..."
 
 # Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Install DesktopApp dependencies
+echo "Checking DesktopApp dependencies..."
+cd "$SCRIPT_DIR/.."
+pip install -q -r requirements.txt
+
+# Install MeetingAssistant dependencies
+echo "Checking MeetingAssistant dependencies..."
+cd "$SCRIPT_DIR/../../MeetingAssistant"
+pip install -q -r requirements.txt
+
+echo "Dependencies up to date!"
+echo ""
 
 # Start the transcription server in a new terminal
 echo "Starting transcription server..."

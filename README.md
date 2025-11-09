@@ -45,60 +45,13 @@ FocusNote consists of three main components:
 - **Gemini API Key**: Required for AI features
   - Get one at [Google AI Studio](https://makersuite.google.com/app/apikey)
 
-## Installation
-
-### 1. Clone the Repository
-```bash
-git clone <repository-url>
-cd focusnote
-```
-
-### 2. Set Up Desktop App
-```bash
-cd DesktopApp
-python -m venv venv
-
-# Activate virtual environment
-# macOS/Linux:
-source venv/bin/activate
-# Windows:
-venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 3. Set Up Meeting Microservice
-```bash
-cd ../MeetingAssistant
-python -m venv venv
-
-# Activate virtual environment
-# macOS/Linux:
-source venv/bin/activate
-# Windows:
-venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 4. Configure API Key
-
-Create a `.env` file in the `MeetingAssistant` directory:
-
-```bash
-GEMINI_API_KEY=your_api_key_here
-PORT=8888
-```
-
-**Important**: Never commit your `.env` file or API key to version control!
+# Installation
 
 ## Running FocusNote
 
 ### Quick Start (Recommended)
 
-We provide startup scripts that launch all three components automatically in separate terminal windows.
+We provide startup scripts that automatically install/update dependencies and launch all three components in separate terminal windows.
 
 #### macOS/Linux:
 ```bash
@@ -118,10 +71,53 @@ cd DesktopApp
 scripts\start-all.bat
 ```
 
-This will open **three terminal windows**:
-1. **Transcription Server** - Whisper AI (port 17483)
-2. **Meeting Microservice** - Gemini AI (port 8888)
-3. **Desktop App** - FocusNote UI
+The script will:
+1. **Check and install/update** all Python dependencies
+2. **Open three terminal windows**:
+   - **Transcription Server** - Whisper AI (port 17483)
+   - **Meeting Microservice** - Gemini AI (port 8888)
+   - **Desktop App** - FocusNote UI
+
+**Note**: The first run may take a few moments to install dependencies. Subsequent runs will be faster as pip only updates changed packages.
+
+### 1. Clone the Repository
+```bash
+git clone <repository-url>
+cd focusnote
+```
+
+### 2. Configure API Key
+
+Create a `.env` file in the `MeetingAssistant` directory:
+
+```bash
+GEMINI_API_KEY=your_api_key_here
+PORT=8888
+```
+
+**Important**: Never commit your `.env` file or API key to version control!
+
+### 3. (Optional) Manual Dependency Installation
+
+The startup script automatically installs dependencies, but if you prefer to install them manually:
+
+**Desktop App:**
+```bash
+cd DesktopApp
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+**Meeting Microservice:**
+```bash
+cd MeetingAssistant
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+
 
 ### Manual Start (Alternative)
 
