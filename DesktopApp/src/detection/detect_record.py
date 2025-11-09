@@ -78,6 +78,9 @@ class AudioCapture:
 
         # Callback for real-time audio processing
         self.audio_callback = None
+        
+        # Callback for when recording stops
+        self.recording_stop_callback = None
 
         # Audio device setup
         self.speaker_device = None
@@ -93,6 +96,13 @@ class AudioCapture:
         callback should accept: (audio_data: bytes, sample_rate: int, channels: int)
         """
         self.audio_callback = callback
+    
+    def set_recording_stop_callback(self, callback):
+        """
+        Set a callback function that will be called when recording stops
+        callback should accept no arguments
+        """
+        self.recording_stop_callback = callback
 
     def get_audio_chunk(self, timeout=None):
         """
@@ -490,16 +500,13 @@ class AudioCapture:
         # 3. Now that the thread is done, we can safely report completion
         print("✅ Stop complete")
         sys.stdout.flush()
-
-        # Wait for thread to finish - DON'T let it block forever
-        if self.audio_thread and self.audio_thread.is_alive():
-            self.audio_thread.join(timeout=3)
-            if self.audio_thread.is_alive():
-                print("⚠️ Recording thread still running (will finish in background)")
-                sys.stdout.flush()
-
-        print("✅ Stop complete")
-        sys.stdout.flush()
+        
+        # Call the recording stop callback if registered
+        if self.recording_stop_callback:
+            try:
+                self.recording_stop_callback()
+            except Exception as e:
+                print(f"⚠️ Recording stop callback error: {e}")
 
     def monitor_loop(self):
         print("👀 Monitoring for calls...")

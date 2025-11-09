@@ -14,6 +14,7 @@ import os
 from datetime import datetime
 import logging
 
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -107,7 +108,7 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat()
     }
 
-@app.post("/api/v1/summary", response_model=SummaryResponse)
+@app.post("/summary", response_model=SummaryResponse)
 async def generate_summary(request: TranscriptRequest):
     """
     Generate a concise summary of the meeting transcript
@@ -134,7 +135,7 @@ async def generate_summary(request: TranscriptRequest):
         processed_at=datetime.utcnow().isoformat()
     )
 
-@app.post("/api/v1/minutes", response_model=MinutesResponse)
+@app.post("/minutes", response_model=MinutesResponse)
 async def generate_minutes(request: TranscriptRequest):
     """
     Generate formal meeting minutes from the transcript
@@ -165,7 +166,7 @@ async def generate_minutes(request: TranscriptRequest):
         processed_at=datetime.utcnow().isoformat()
     )
 
-@app.post("/api/v1/action-items", response_model=ActionItemsResponse)
+@app.post("/action-items", response_model=ActionItemsResponse)
 async def generate_action_items(request: TranscriptRequest):
     """
     Extract action items from the meeting transcript

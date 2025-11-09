@@ -29,6 +29,11 @@ class MainWindow(QMainWindow):
             server_url="ws://localhost:17483"
         )
         self.transcription_client.start()
+        
+        # Register callback to flush transcript when recording stops
+        self.audio_capture.set_recording_stop_callback(
+            self.transcription_client.flush_transcript
+        )
 
         self.init_ui()
         self.apply_styles()

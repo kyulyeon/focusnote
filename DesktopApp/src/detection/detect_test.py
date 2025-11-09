@@ -76,6 +76,9 @@ class AudioCapture:
         # Callback for real-time audio processing
         self.audio_callback = None
         
+        # Callback for when recording stops
+        self.recording_stop_callback = None
+        
         # macOS ffmpeg process
         self.ffmpeg_process = None
         self.ffmpeg_thread = None
@@ -169,6 +172,13 @@ class AudioCapture:
         callback should accept: (audio_data: bytes, sample_rate: int, channels: int)
         """
         self.audio_callback = callback
+    
+    def set_recording_stop_callback(self, callback):
+        """
+        Set a callback function that will be called when recording stops
+        callback should accept no arguments
+        """
+        self.recording_stop_callback = callback
 
     def get_audio_chunk(self, timeout=None):
         """
@@ -579,6 +589,13 @@ class AudioCapture:
 
         print("✅ Stop complete")
         sys.stdout.flush()
+        
+        # Call the recording stop callback if registered
+        if self.recording_stop_callback:
+            try:
+                self.recording_stop_callback()
+            except Exception as e:
+                print(f"⚠️ Recording stop callback error: {e}")
 
     def monitor_loop(self):
         print("👀 Monitoring for calls...")

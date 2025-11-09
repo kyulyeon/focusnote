@@ -9,6 +9,8 @@ env/
 ENV/
 .venv
 
+/meeting_output
+
 # IDE
 .vscode/
 .idea/

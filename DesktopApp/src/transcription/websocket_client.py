@@ -3,6 +3,9 @@ import websockets
 import json
 import threading
 import numpy as np
+import requests
+import os
+from datetime import datetime
 
 
 class TranscriptionWebSocketClient:
@@ -13,6 +16,7 @@ class TranscriptionWebSocketClient:
         self.websocket = None
         self.thread = None
         self.loop = None
+        self.transcript = ""
 
     def start(self):
         """Start the transcription client in a separate thread"""
@@ -22,7 +26,7 @@ class TranscriptionWebSocketClient:
         self.running = True
         self.thread = threading.Thread(target=self._run_async_loop, daemon=True)
         self.thread.start()
-        print(f"🎯 Transcription client started, connecting to {self.server_url}")
+        print(f"Transcription client started, connecting to {self.server_url}")
 
     def stop(self):
         """Stop the transcription client"""
@@ -31,7 +35,93 @@ class TranscriptionWebSocketClient:
             self.loop.call_soon_threadsafe(self.loop.stop)
         if self.thread:
             self.thread.join(timeout=2)
-        print("🛑 Transcription client stopped")
+        print("Transcription client stopped")
+        
+        # Send transcript to meeting assistant service if we have any transcript
+        if self.transcript.strip():
+            self._send_to_meeting_service()
+    
+    def flush_transcript(self):
+        """Send accumulated transcript to meeting service and reset (without stopping)"""
+        if self.transcript.strip():
+            print(f"\nFlushing transcript (recording ended)...")
+            self._send_to_meeting_service()
+            # Reset transcript for next recording
+            self.transcript = ""
+        else:
+            print("No transcript to flush")
+    
+    def _send_to_meeting_service(self):
+        """Send the accumulated transcript to the meeting assistant service"""
+        base_url = "http://localhost:8888"
+        endpoints = ["/summary", "/action-items", "/minutes"]
+
+               # Prepare the request payload
+        payload = {
+            "transcript": self.transcript.strip(),
+            "meeting_date": datetime.now().isoformat()
+        }
+        
+        # Create output directory if it doesn't exist
+        output_dir = os.path.join(os.path.dirname(__file__), "..", "..", "meeting_output",payload["meeting_date"].split(".")[0])
+        output_dir = os.path.abspath(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
+        
+ 
+        print(f"\nSending transcript to meeting assistant service...")
+        print(f"Transcript length: {len(self.transcript)} characters")
+        print(f"Output directory: {output_dir}\n")
+        
+        for endpoint in endpoints:
+            try:
+                url = f"{base_url}{endpoint}"
+                print(f"Requesting {endpoint}...")
+                
+                response = requests.post(
+                    url,
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    print(f"{endpoint}: Success")
+                    # Print the result in a nice format
+                    if endpoint == "/summary":
+                        summary = result.get('summary', 'N/A')
+                        print(f"Summary: {summary[:100]}...")
+                        summary_path = os.path.join(output_dir, "meeting_summary.txt")
+                        with open(summary_path, "w") as f:
+                            f.write(summary)
+                        print(f"Saved to: {summary_path}")
+                    elif endpoint == "/action-items":
+                        action_items = result.get('action_items', [])
+                        print(f"Action items: {len(action_items)} found")
+                        actions_path = os.path.join(output_dir, "action_items.txt")
+                        with open(actions_path, "w") as f:
+                            for item in action_items:
+                                f.write(f"- {item}\n")
+                        print(f"Saved to: {actions_path}")
+                        
+                    elif endpoint == "/minutes":
+                        minutes = result.get('minutes', '')
+                        print(f"Minutes generated successfully")
+                        minutes_path = os.path.join(output_dir, "meeting_minutes.txt")
+                        with open(minutes_path, "w") as f:
+                            f.write(minutes)
+                        print(f"Saved to: {minutes_path}")
+                else:
+                    print(f"{endpoint}: Failed (status {response.status_code})")
+                    
+            except requests.exceptions.ConnectionError:
+                print(f"{endpoint}: Connection failed (is the service running?)")
+            except requests.exceptions.Timeout:
+                print(f"{endpoint}: Request timeout")
+            except Exception as e:
+                print(f"{endpoint}: Error - {e}")
+        
+        print(f"\nMeeting assistant requests completed\n")
 
     def _run_async_loop(self):
         """Run the asyncio event loop in this thread"""
@@ -41,7 +131,7 @@ class TranscriptionWebSocketClient:
         try:
             self.loop.run_until_complete(self._transcription_loop())
         except Exception as e:
-            print(f"❌ Transcription loop error: {e}")
+            print(f"Transcription loop error: {e}")
         finally:
             self.loop.close()
 
@@ -53,7 +143,7 @@ class TranscriptionWebSocketClient:
             try:
                 async with websockets.connect(self.server_url) as websocket:
                     self.websocket = websocket
-                    print("✅ Connected to transcription server")
+                    print("Connected to transcription server")
 
                     # Audio buffer for accumulating chunks
                     audio_buffer = []
@@ -92,17 +182,17 @@ class TranscriptionWebSocketClient:
 
                         # Send when buffer has enough duration (accounts for resampling)
                         if duration_seconds >= target_duration:
-                            print(f"📦 Accumulated {duration_seconds:.1f}s of audio, sending to transcription...")
+                            print(f"Accumulated {duration_seconds:.1f}s of audio, sending to transcription...")
                             await self._send_buffer(
                                 audio_buffer, current_sample_rate, current_channels
                             )
                             audio_buffer = []
 
             except websockets.exceptions.ConnectionClosed:
-                print(f"⚠️  Connection closed, reconnecting in {retry_delay}s...")
+                print(f"Connection closed, reconnecting in {retry_delay}s...")
                 await asyncio.sleep(retry_delay)
             except Exception as e:
-                print(f"❌ Connection error: {e}")
+                print(f"Connection error: {e}")
                 import traceback
 
                 traceback.print_exc()
@@ -137,14 +227,14 @@ class TranscriptionWebSocketClient:
                 padding = min_samples - len(float32_data)
                 float32_data = np.pad(float32_data, (0, padding), mode='constant')
                 print(
-                    f"⚠️  Buffer slightly short, padded {padding} samples to reach {min_samples}"
+                    f"Buffer slightly short, padded {padding} samples to reach {min_samples}"
                 )
 
             # Ensure we don't exceed reasonable limits (10 seconds max)
             max_samples = int(16000 * 10)
             if len(float32_data) > max_samples:
                 print(
-                    f"⚠️  Buffer too long ({len(float32_data)} samples), truncating to {max_samples}"
+                    f"Buffer too long ({len(float32_data)} samples), truncating to {max_samples}"
                 )
                 float32_data = float32_data[:max_samples]
 
@@ -152,7 +242,7 @@ class TranscriptionWebSocketClient:
             audio_bytes = float32_data.tobytes()
 
             duration = len(float32_data) / 16000
-            print(f"📤 Sending {len(float32_data)} samples ({duration:.1f}s)")
+            print(f"Sending {len(float32_data)} samples ({duration:.1f}s)")
 
             if self.websocket:
                 await self.websocket.send(audio_bytes)
@@ -167,14 +257,15 @@ class TranscriptionWebSocketClient:
                     if data.get("type") == "transcription":
                         text = data.get("text", "").strip()
                         if text:
-                            print(f"📝 Transcription: {text}")
+                            print(f"Transcription: {text}")
+                            self.transcript +=  text + " "
                 except asyncio.TimeoutError:
-                    print("⚠️  Transcription timeout (server may be processing)")
+                    print("Transcription timeout (server may be processing)")
                 except json.JSONDecodeError:
                     pass
 
         except Exception as e:
-            print(f"❌ Error sending audio: {e}")
+            print(f"Error sending audio: {e}")
             import traceback
 
             traceback.print_exc()
