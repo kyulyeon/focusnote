@@ -25,22 +25,13 @@ if SYSTEM == "Windows":
 
         AUDIO_BACKEND = "pyaudio"
 elif SYSTEM == "Darwin":  # macOS
-    for i in range(p.get_device_count()):
-        dev = p.get_device_info_by_index(i)
-        if (
-            "blackhole" in dev["name"].lower()
-            or "soundflower" in dev["name"].lower()
-        ):
-            self.speaker_device = dev
-            print(f"🔊 macOS virtual device: {dev['name']}")
-            break
-
     try:
-        default_mic = p.get_default_input_device_info()
-        self.mic_device = default_mic
-        print(f"🎤 Microphone: {default_mic['name']}")
-    except Exception as e:
-        print(f"⚠️  Could not setup microphone: {e}")
+        import pyaudio
+
+        AUDIO_BACKEND = "pyaudio"
+    except ImportError:
+        print("⚠️  PyAudio not found. Install with: pip install pyaudio")
+        sys.exit(1)
 else:  # Linux
     try:
         import pyaudio
@@ -99,33 +90,38 @@ class AudioCapture:
 
         print(f"🖥️  Platform: {SYSTEM}")
         print(f"🎵 Audio backend: {AUDIO_BACKEND}\n")
+
+
 def start_ffmpeg_capture(self):
     """Start ffmpeg system audio capture for macOS"""
     if SYSTEM != "Darwin":
         return
-    
+
     try:
         # Start capturing
         cmd = [
-            'ffmpeg',
-            '-f', 'avfoundation',
-            '-i', ':0',  # Audio device
-            '-f', 's16le',
-            '-acodec', 'pcm_s16le',
-            '-ar', str(self.rate),
-            '-ac', '2',
-            'pipe:1'
+            "ffmpeg",
+            "-f",
+            "avfoundation",
+            "-i",
+            ":0",  # Audio device
+            "-f",
+            "s16le",
+            "-acodec",
+            "pcm_s16le",
+            "-ar",
+            str(self.rate),
+            "-ac",
+            "2",
+            "pipe:1",
         ]
-        
+
         self.ffmpeg_process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            bufsize=10**8
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=10**8
         )
-        
+
         print(f"✅ ffmpeg system audio capture started")
-        
+
         # Start thread to read from ffmpeg
         def read_ffmpeg():
             chunk_size = self.chunk * 2 * 2  # samples * channels * bytes
@@ -142,15 +138,16 @@ def start_ffmpeg_capture(self):
                     if self.is_recording:
                         print(f"⚠️  ffmpeg read error: {e}")
                     break
-        
+
         self.ffmpeg_thread = threading.Thread(target=read_ffmpeg, daemon=True)
         self.ffmpeg_thread.start()
-        
+
     except FileNotFoundError:
         print("❌ ffmpeg not found. Install with: brew install ffmpeg")
         print("   Falling back to microphone only")
     except Exception as e:
         print(f"⚠️  Could not start ffmpeg: {e}")
+
 
 def stop_ffmpeg_capture(self):
     """Stop ffmpeg system audio capture"""
@@ -164,9 +161,10 @@ def stop_ffmpeg_capture(self):
             except:
                 pass
         self.ffmpeg_process = None
-    
+
     if self.ffmpeg_thread and self.ffmpeg_thread.is_alive():
         self.ffmpeg_thread.join(timeout=1)
+
     def set_audio_callback(self, callback):
         """
         Set a callback function that will be called with each audio chunk

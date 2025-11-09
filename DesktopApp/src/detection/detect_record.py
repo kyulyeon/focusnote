@@ -139,32 +139,15 @@ class AudioCapture:
                     print(f"⚠️  Could not setup microphone: {e}")
 
             elif SYSTEM == "Darwin":  # macOS
-                devices = []
-                output_index = 0
                 for i in range(p.get_device_count()):
-                    device_info = p.get_device_info_by_index(i)
-                    print(device_info["maxOutputChannels"])
-                    devices.append(
-                        {
-                            "index": i,
-                            "name": device_info["name"],
-                            "channels": device_info["maxInputChannels"],
-                            "sample_rate": int(device_info["defaultSampleRate"]),
-                        }
-                    )
-                for device in devices:
-                    if device["name"] == "Built-in Output":
-                        output_index = device["index"]
-                dev = p.get_device_info_by_index(len(devices) - 1)
-                self.speaker_device = dev
-                print(f"🔊 macOS virtual device: {dev['name']}")
-                # if (
-                #     "blackhole" in dev["name"].lower()
-                #     or "soundflower" in dev["name"].lower()
-                # ):
-                #     self.speaker_device = dev
-                #     print(f"🔊 macOS virtual device: {dev['name']}")
-                #     break\
+                    dev = p.get_device_info_by_index(i)
+                    if (
+                        "blackhole" in dev["name"].lower()
+                        or "soundflower" in dev["name"].lower()
+                    ):
+                        self.speaker_device = dev
+                        print(f"🔊 macOS virtual device: {dev['name']}")
+                        break
                 try:
                     default_mic = p.get_default_input_device_info()
                     self.mic_device = default_mic
@@ -308,6 +291,8 @@ class AudioCapture:
 
             try:
                 self.p = pyaudio.PyAudio()
+                speaker_rate = None
+                mic_rate = None
 
                 # Open speaker stream
                 if self.speaker_device:
@@ -325,7 +310,9 @@ class AudioCapture:
                         frames_per_buffer=self.chunk,
                         input_device_index=self.speaker_device["index"],
                     )
+
                     sample_rate = rate_spk
+                    speaker_rate = rate_spk
                     channels = channels_spk
                     print(f"✅ Speaker: {channels_spk}ch @ {rate_spk}Hz")
 
@@ -333,6 +320,10 @@ class AudioCapture:
                 if self.mic_device:
                     channels_mic = min(self.mic_device.get("maxInputChannels", 2), 2)
                     rate_mic = int(self.mic_device.get("defaultSampleRate", self.rate))
+                    if speaker_rate and rate_mic != speaker_rate:
+                        print("mic not speaker")
+                        rate_mic = speaker_rate
+            
                     self.stream_mic = self.p.open(
                         format=self.format,
                         channels=channels_mic,

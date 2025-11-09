@@ -29,7 +29,7 @@ class MainWindow(QMainWindow):
         #     server_url="ws://localhost:17483"
         # )
         # self.transcription_client.start()
-        
+
         self.init_ui()
         self.apply_styles()
 
