@@ -1,6 +1,7 @@
 from PyQt6.QtCore import QThread
 from detection.detect_record import AudioCapture
 
+
 class AudioCaptureThread(QThread):
     def __init__(self, audio_capture: AudioCapture):
         super().__init__()
