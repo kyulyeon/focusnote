@@ -1,5 +1,5 @@
 from PyQt6.QtCore import QThread
-from detection.detect_record import AudioCapture
+from detection.detect_test import AudioCapture
 
 
 class AudioCaptureThread(QThread):

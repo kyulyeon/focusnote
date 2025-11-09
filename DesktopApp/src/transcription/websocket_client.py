@@ -51,6 +51,7 @@ class TranscriptionWebSocketClient:
         else:
             print("No transcript to flush")
     
+    #send to api to send to gmeini 
     def _send_to_meeting_service(self):
         """Send the accumulated transcript to the meeting assistant service"""
         base_url = "http://localhost:8888"

@@ -4,16 +4,11 @@ import websockets
 import json
 import numpy as np
 import time
-from pywhispercpp.model import Model, Segment
+from pywhispercpp.model import Model
 
 host = "localhost"
 port = 17483
 model = Model("large-v3")
-filler_words = re.compile(
-    r"\b(um|uh|like|you know|so|I mean|actually)\b", re.IGNORECASE
-)
-
-duplicate_words = re.compile(r"\b(\w+)(?:\s+\1\b)+", re.IGNORECASE)
 
 
 class AudioServer:
@@ -101,17 +96,12 @@ class AudioServer:
         except Exception as e:
             print(f"Error handling control message: {e}")
 
-    def clean_transcript(self, text) -> str:
-        text = filler_words.sub("", text)
-        text = duplicate_words.sub(r"\1", text)
-        return text
-
     async def start(self):
         """Start the WebSocket server"""
         print(f"Starting audio transcription server on {self.host}:{self.port}")
         async with websockets.serve(self.handle_client, self.host, self.port):
             print(f"Server running on ws://{self.host}:{self.port}")
-            await asyncio.Future()  # Run forever
+            await asyncio.Future()  
 
 
 def main():

@@ -8,10 +8,9 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QCheckBox,
     QFrame,
-    QScrollArea,
 )
 from PyQt6.QtCore import Qt, QTimer, QSize
-from PyQt6.QtGui import QFont, QPalette, QColor
+from PyQt6.QtGui import QFont
 from detection.detect_test import AudioCapture
 from audio.audio_thread import AudioCaptureThread
 from transcription.websocket_client import TranscriptionWebSocketClient

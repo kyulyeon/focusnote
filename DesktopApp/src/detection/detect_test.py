@@ -9,6 +9,7 @@ import platform
 import struct
 import queue
 import subprocess
+import argparse
 
 
 # Import appropriate audio library based on OS
@@ -19,7 +20,7 @@ if SYSTEM == "Windows":
         import pyaudiowpatch as pyaudio
         AUDIO_BACKEND = "pyaudiowpatch"
     except ImportError:
-        print("⚠️  PyAudioWPatch not found. Install with: pip install pyaudiowpatch")
+        print("PyAudioWPatch not found. Install with: pip install pyaudiowpatch")
         import pyaudio
         AUDIO_BACKEND = "pyaudio"
 elif SYSTEM == "Darwin":  # macOS
@@ -27,14 +28,14 @@ elif SYSTEM == "Darwin":  # macOS
         import pyaudio
         AUDIO_BACKEND = "pyaudio"
     except ImportError:
-        print("⚠️  PyAudio not found. Install with: pip install pyaudio")
+        print("PyAudio not found. Install with: pip install pyaudio")
         sys.exit(1)
 else:  # Linux
     try:
         import pyaudio
         AUDIO_BACKEND = "pyaudio"
     except ImportError:
-        print("⚠️  PyAudio not found. Install with: pip install pyaudio")
+        print("PyAudio not found. Install with: pip install pyaudio")
         sys.exit(1)
 
 
@@ -89,8 +90,8 @@ class AudioCapture:
         self.mic_device = None
         self.setup_audio_devices()
 
-        print(f"🖥️  Platform: {SYSTEM}")
-        print(f"🎵 Audio backend: {AUDIO_BACKEND}\n")
+        print(f"Platform: {SYSTEM}")
+        print(f"Audio backend: {AUDIO_BACKEND}\n")
 
     def start_ffmpeg_capture(self):
         """Start ffmpeg system audio capture for macOS"""
@@ -110,7 +111,8 @@ class AudioCapture:
                 'pipe:1'
             ]
             
-            print(f"🔍 DEBUG: Starting ffmpeg with sample rate: {self.rate} Hz")
+            #read the system audio from ffmpeg
+            print(f"DEBUG: Starting ffmpeg with sample rate: {self.rate} Hz")
             
             self.ffmpeg_process = subprocess.Popen(
                 cmd,
@@ -119,7 +121,7 @@ class AudioCapture:
                 bufsize=10**8
             )
             
-            print(f"✅ ffmpeg system audio capture started at {self.rate} Hz, 2 channels")
+            print(f"ffmpeg system audio capture started at {self.rate} Hz, 2 channels")
             
             # Start thread to read from ffmpeg
             def read_ffmpeg():
@@ -135,7 +137,7 @@ class AudioCapture:
                             pass
                     except Exception as e:
                         if self.is_recording:
-                            print(f"⚠️  ffmpeg read error: {e}")
+                            print(f"ffmpeg read error: {e}")
                         break
             
             self.ffmpeg_thread = threading.Thread(target=read_ffmpeg, daemon=True)
@@ -143,11 +145,11 @@ class AudioCapture:
             return True
             
         except FileNotFoundError:
-            print("❌ ffmpeg not found. Install with: brew install ffmpeg")
-            print("   Falling back to microphone only")
+            print("ffmpeg not found. Install with: brew install ffmpeg")
+            print("Falling back to microphone only")
             return False
         except Exception as e:
-            print(f"⚠️  Could not start ffmpeg: {e}")
+            print(f"Could not start ffmpeg: {e}")
             return False
 
     def stop_ffmpeg_capture(self):
@@ -207,64 +209,64 @@ class AudioCapture:
                         for loopback in p.get_loopback_device_info_generator():
                             if default_speakers["name"] in loopback["name"]:
                                 self.speaker_device = loopback
-                                print(f"🔊 Speaker loopback: {loopback['name']}")
+                                print(f"Speaker loopback: {loopback['name']}")
                                 break
                     else:
                         self.speaker_device = default_speakers
-                        print(f"🔊 Speaker loopback: {default_speakers['name']}")
+                        print(f"Speaker loopback: {default_speakers['name']}")
                 except Exception as e:
-                    print(f"⚠️  Could not setup speaker loopback: {e}")
+                    print(f"Could not setup speaker loopback: {e}")
 
                 # Get microphone (for your voice)
                 try:
                     default_mic = p.get_default_input_device_info()
                     self.mic_device = default_mic
-                    print(f"🎤 Microphone: {default_mic['name']}")
+                    print(f"Microphone: {default_mic['name']}")
                 except Exception as e:
-                    print(f"⚠️  Could not setup microphone: {e}")
+                    print(f"Could not setup microphone: {e}")
 
             elif SYSTEM == "Darwin":  # macOS
                 # On macOS, we'll use ffmpeg for system audio instead of PyAudio
-                print("🍎 macOS detected - will use ffmpeg for system audio capture")
+                print("macOS detected - will use ffmpeg for system audio capture")
                 
                 # Still set up microphone for user's voice
                 try:
                     default_mic = p.get_default_input_device_info()
                     self.mic_device = default_mic
-                    print(f"🎤 Microphone: {default_mic['name']}")
+                    print(f"Microphone: {default_mic['name']}")
                 except Exception as e:
-                    print(f"⚠️  Could not setup microphone: {e}")
+                    print(f"Could not setup microphone: {e}")
 
             else:  # Linux
                 for i in range(p.get_device_count()):
                     dev = p.get_device_info_by_index(i)
                     if "monitor" in dev["name"].lower() and dev["maxInputChannels"] > 0:
                         self.speaker_device = dev
-                        print(f"🔊 Linux monitor device: {dev['name']}")
+                        print(f"Linux monitor device: {dev['name']}")
                         break
 
                 try:
                     default_mic = p.get_default_input_device_info()
                     self.mic_device = default_mic
-                    print(f"🎤 Microphone: {default_mic['name']}")
+                    print(f"Microphone: {default_mic['name']}")
                 except Exception as e:
-                    print(f"⚠️  Could not setup microphone: {e}")
+                    print(f"Could not setup microphone: {e}")
 
             p.terminate()
 
             if SYSTEM == "Darwin":
                 # On macOS, we don't need speaker_device for PyAudio
                 if not self.mic_device:
-                    print("⚠️  Warning: No microphone found")
+                    print(" Warning: No microphone found")
             elif not self.speaker_device and not self.mic_device:
-                print("⚠️  Warning: Could not find any audio devices")
+                print("Warning: Could not find any audio devices")
             elif not self.speaker_device:
-                print("⚠️  Warning: No speaker loopback (recording mic only)")
+                print("Warning: No speaker loopback (recording mic only)")
             elif not self.mic_device:
-                print("⚠️  Warning: No microphone (recording speakers only)")
+                print("Warning: No microphone (recording speakers only)")
 
         except Exception as e:
-            print(f"⚠️  Warning: Could not initialize audio: {e}")
+            print(f"Warning: Could not initialize audio: {e}")
 
     def get_process_names(self, base_names):
         """Get platform-specific process names"""
@@ -358,7 +360,7 @@ class AudioCapture:
             return
 
         if SYSTEM != "Darwin" and not self.speaker_device and not self.mic_device:
-            print("❌ Cannot record: No audio devices available")
+            print("Cannot record: No audio devices available")
             return
 
         self.is_recording = True
@@ -367,9 +369,9 @@ class AudioCapture:
         platform = f"_{platform_name}" if platform_name else ""
         filename = os.path.join(self.output_dir, f"meeting{platform}_{timestamp}.wav")
 
-        print(f"\n🎙️ Recording to: {filename}")
+        print(f"\nRecording to: {filename}")
         if self.mic_device:
-            print(f"🎤 Microphone: {self.mic_device['name']}")
+            print(f"Microphone: {self.mic_device['name']}")
         sys.stdout.flush()
 
         def record():
@@ -386,7 +388,7 @@ class AudioCapture:
                 if SYSTEM == "Darwin":
                     ffmpeg_started = self.start_ffmpeg_capture()
                     if ffmpeg_started:
-                        print("✅ System audio: ffmpeg capture")
+                        print("System audio: ffmpeg capture")
 
                 # Windows/Linux: Open speaker stream
                 if SYSTEM != "Darwin" and self.speaker_device:
@@ -406,7 +408,7 @@ class AudioCapture:
                     )
                     sample_rate = rate_spk
                     channels = channels_spk
-                    print(f"✅ Speaker: {channels_spk}ch @ {rate_spk}Hz")
+                    print(f"Speaker: {channels_spk}ch @ {rate_spk}Hz")
 
                 # Open microphone stream (all platforms)
                 if self.mic_device:
@@ -414,8 +416,8 @@ class AudioCapture:
                     channels_mic = min(self.mic_device.get("maxInputChannels", 2), 2)
                     # Force the mic to use the same rate as ffmpeg/self.rate
                     rate_mic = self.rate  # Force to match ffmpeg capture rate
-                    print(f"🔍 DEBUG: Mic native rate: {self.mic_device.get('defaultSampleRate')}, forcing to: {rate_mic}")
-                    print(f"🔍 DEBUG: Mic native channels: {self.mic_device.get('maxInputChannels')}, using: {channels_mic}")
+                    print(f"DEBUG: Mic native rate: {self.mic_device.get('defaultSampleRate')}, forcing to: {rate_mic}")
+                    print(f"DEBUG: Mic native channels: {self.mic_device.get('maxInputChannels')}, using: {channels_mic}")
                     self.stream_mic = self.p.open(
                         format=self.format,
                         channels=channels_mic,
@@ -429,9 +431,9 @@ class AudioCapture:
                     if not self.speaker_device and SYSTEM != "Darwin":
                         sample_rate = rate_mic
                         channels = channels_mic
-                    print(f"✅ Mic: {channels_mic}ch @ {rate_mic}Hz (will be converted to stereo if needed)")
+                    print(f"Mic: {channels_mic}ch @ {rate_mic}Hz (will be converted to stereo if needed)")
 
-                print("🎬 Recording...\n")
+                print("Recording...\n")
                 sys.stdout.flush()
 
                 # Recording loop
@@ -493,11 +495,11 @@ class AudioCapture:
                             try:
                                 self.audio_callback(audio_chunk, sample_rate, channels)
                             except Exception as e:
-                                print(f"⚠️  Callback error: {e}")
+                                print(f"Callback error: {e}")
 
                     except Exception as e:
                         if self.is_recording:
-                            print(f"⚠️  Error: {e}")
+                            print(f"Error: {e}")
                             sys.stdout.flush()
                         recording_active = False
 
@@ -505,7 +507,7 @@ class AudioCapture:
                 sys.stdout.flush()
 
             except Exception as e:
-                print(f"❌ Setup error: {e}")
+                print(f"Setup error: {e}")
                 import traceback
                 traceback.print_exc()
                 sys.stdout.flush()
@@ -542,8 +544,8 @@ class AudioCapture:
                 # Save file
                 if len(frames) > 0:
                     try:
-                        print(f"💾 Saving...")
-                        print(f"🔍 DEBUG: WAV file params - Rate: {sample_rate} Hz, Channels: {channels}")
+                        print(f"Saving...")
+                        print(f"DEBUG: WAV file params - Rate: {sample_rate} Hz, Channels: {channels}")
                         sys.stdout.flush()
 
                         temp_p = pyaudio.PyAudio()
@@ -557,16 +559,16 @@ class AudioCapture:
 
                         file_size = os.path.getsize(filename) / (1024 * 1024)
                         duration = len(frames) * self.chunk / sample_rate
-                        print(f"✅ Saved: {file_size:.2f} MB, {duration:.1f}s")
-                        print(f"📁 {filename}\n")
+                        print(f"Saved: {file_size:.2f} MB, {duration:.1f}s")
+                        print(f"{filename}\n")
                         sys.stdout.flush()
                     except Exception as e:
-                        print(f"❌ Save error: {e}")
+                        print(f"Save error: {e}")
                         import traceback
                         traceback.print_exc()
                         sys.stdout.flush()
                 else:
-                    print(f"⚠️  No data recorded\n")
+                    print(f"No data recorded\n")
                     sys.stdout.flush()
 
         self.audio_thread = threading.Thread(target=record, daemon=False)
@@ -576,7 +578,7 @@ class AudioCapture:
         if not self.is_recording:
             return
 
-        print("⏹️ Stopping...")
+        print("Stopping...")
         sys.stdout.flush()
 
         self.is_recording = False
@@ -584,10 +586,10 @@ class AudioCapture:
         if self.audio_thread and self.audio_thread.is_alive():
             self.audio_thread.join(timeout=3)
             if self.audio_thread.is_alive():
-                print("⚠️ Recording thread still running (will finish in background)")
+                print("Recording thread still running (will finish in background)")
                 sys.stdout.flush()
 
-        print("✅ Stop complete")
+        print("Stop complete")
         sys.stdout.flush()
         
         # Call the recording stop callback if registered
@@ -595,12 +597,12 @@ class AudioCapture:
             try:
                 self.recording_stop_callback()
             except Exception as e:
-                print(f"⚠️ Recording stop callback error: {e}")
+                print(f"Recording stop callback error: {e}")
 
     def monitor_loop(self):
-        print("👀 Monitoring for calls...")
-        print(f"⚙️  Inactivity timeout: {self.inactive_threshold}s")
-        print(f"⚙️  Call confirmation: {self.call_detection_threshold} checks\n")
+        print("Monitoring for calls...")
+        print(f"Inactivity timeout: {self.inactive_threshold}s")
+        print(f"Call confirmation: {self.call_detection_threshold} checks\n")
         sys.stdout.flush()
 
         check_count = 0
@@ -613,13 +615,13 @@ class AudioCapture:
             if check_count % 30 == 0 and not self.in_call:
                 status = []
                 if discord_active:
-                    status.append(f"Discord: ✅ {discord_cpu:.1f}%")
+                    status.append(f"Discord: cpu {discord_cpu:.1f}%")
                 else:
-                    status.append(f"Discord: ❌")
+                    status.append(f"Discord: not active")
                 if zoom_active:
-                    status.append(f"Zoom: ✅ {zoom_cpu:.1f}%")
+                    status.append(f"Zoom: cpu {zoom_cpu:.1f}%")
                 else:
-                    status.append(f"Zoom: ❌")
+                    status.append(f"Zoom: not active")
 
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] {' | '.join(status)}")
                 sys.stdout.flush()
@@ -647,7 +649,7 @@ class AudioCapture:
                     sys.stdout.flush()
 
                     if self.call_detected_count >= self.call_detection_threshold:
-                        print(f"📞 {current_platform.upper()} call started!")
+                        print(f"{current_platform.upper()} call started!")
                         sys.stdout.flush()
 
                         self.start_recording(current_platform)
@@ -673,13 +675,13 @@ class AudioCapture:
 
                     if self.inactive_count % 3 == 0:
                         print(
-                            f"⏳ Inactive {self.inactive_count}/{self.inactive_threshold}s"
+                            f"Inactive {self.inactive_count}/{self.inactive_threshold}s"
                         )
                         sys.stdout.flush()
 
                     if self.inactive_count >= self.inactive_threshold:
                         print(
-                            f"\n📴 {self.active_platform.upper()} call ended (inactive {self.inactive_threshold}s)"
+                            f"\n{self.active_platform.upper()} call ended (inactive {self.inactive_threshold}s)"
                         )
                         sys.stdout.flush()
                         self.stop_recording()
@@ -699,44 +701,19 @@ class AudioCapture:
         sys.stdout.flush()
 
     def stop(self):
-        print("\n🛑 Shutting down...")
+        print("\nShutting down...")
         self.running = False
         self.stop_recording()
         time.sleep(1)
 
 
 def main():
-    import argparse
 
     parser = argparse.ArgumentParser(description="FocusNote - Call recording")
     parser.add_argument("--test", action="store_true", help="Test 10s recording")
     parser.add_argument("--manual", action="store_true", help="Manual mode")
-    args = parser.parse_args()
 
     backend = AudioCapture()
-
-    if args.test:
-        print("\n🧪 Test recording for 10 seconds...")
-        print("💬 Talk into your microphone!\n")
-        backend.start_recording("test")
-        time.sleep(10)
-        backend.stop_recording()
-        print("✅ Done! Check meeting_recordings folder\n")
-        return
-
-    if args.manual:
-        print("\n🎮 MANUAL MODE")
-        print("Press Enter to start/stop\n")
-        try:
-            while True:
-                input("Press Enter to START: ")
-                backend.start_recording("manual")
-                input("Press Enter to STOP: ")
-                backend.stop_recording()
-        except KeyboardInterrupt:
-            backend.stop_recording()
-            print("\n👋 Goodbye!")
-        return
 
     try:
         backend.start()
@@ -746,7 +723,7 @@ def main():
             time.sleep(1)
     except KeyboardInterrupt:
         backend.stop()
-        print("\n👋 Goodbye!")
+        print("\nGoodbye!")
 
 
 if __name__ == "__main__":
