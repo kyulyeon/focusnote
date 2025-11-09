@@ -10,7 +10,7 @@ import struct
 import queue
 
 
-from .dnd_controller import DNDController
+
 # Import appropriate audio library based on OS
 SYSTEM = platform.system()
 
@@ -46,7 +46,7 @@ class AudioCapture:
         self.stream_speaker = None
         self.stream_mic = None
         self.p = None
-        self.dnd_controller = DNDController()
+
         
         # Audio settings
         self.chunk = 1024
@@ -478,7 +478,6 @@ class AudioCapture:
         sys.stdout.flush()
         
         check_count = 0
-        dnd_enabled_for_call = False 
         while self.running:
             # 1. Check all potential platforms
             zoom_active, zoom_name, zoom_cpu = self.detect_zoom_call()
@@ -515,19 +514,14 @@ class AudioCapture:
                 current_platform = "teams"
                 is_any_call_active = True
             
-            if is_any_call_active and not dnd_enabled_for_call:
-                # Call detected and DND not yet enabled
-                print(f"🔕 Enabling DND for {current_platform.upper()} call...")
+            if is_any_call_active:
                 sys.stdout.flush()
-                self.dnd_controller.enable_dnd()
-                dnd_enabled_for_call = True
-        
-            elif not is_any_call_active and dnd_enabled_for_call:
-                # No call active but DND is on - disable it
-                print(f"🔔 Disabling DND (no active call)")
+
+     
+            elif not is_any_call_active:
                 sys.stdout.flush()
-                self.dnd_controller.disable_dnd()
-                dnd_enabled_for_call = False
+
+
             # --- State Machine Logic ---
 
             if not self.in_call:
