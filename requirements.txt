@@ -6,3 +6,6 @@ psutil==5.9.6
 openai-whisper==20231117
 requests==2.31.0
 python-dotenv==1.0.0
+websockets>=12.0
+numpy>=1.24.0
+pywhispercpp>=1.0.0
