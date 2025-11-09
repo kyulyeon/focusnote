@@ -55,13 +55,13 @@ class AudioServer:
         try:
             # Convert bytes to numpy array
             audio_array = np.frombuffer(audio_data, dtype=np.float32)
+            duration = len(audio_array) / self.sample_rate
 
             # 1.5 so it doesnt complain
             min_samples = int(self.sample_rate * 1.5)
             if len(audio_array) < min_samples:
-                padding = min_samples - len(audio_array)
-                audio_array = np.pad(audio_array, (0, padding), mode="constant")
-
+                print(f"  Audio too short ({duration:.1f}s), skipping")
+                return ""
             # Send chunk to model for transcription
             segments = self.model.transcribe(audio_array)
 
