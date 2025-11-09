@@ -1,5 +1,7 @@
 # FocusNote
 
+Made by Brian Hui, Eric Kwon and Abbe Azale
+
 An intelligent meeting assistant that automatically detects calls, transcribes conversations in real-time, and generates AI-powered summaries, meeting minutes, and action items.
 
 ## Overview
@@ -82,7 +84,7 @@ The script will:
 
 ### 1. Clone the Repository
 ```bash
-git clone <repository-url>
+git clone git@github.com:kyulyeon/focusnote.git
 cd focusnote
 ```
 
@@ -316,33 +318,4 @@ python src/detection/detect_test.py --test
 - Google Generative AI SDK
 - ffmpeg (macOS)
 
-## Contributing
-
-Contributions are welcome! Please ensure:
-- Code follows existing style
-- Tests pass
-- New features are documented
-- No API keys in commits
-
-## License
-
-[Your License Here]
-
-## Acknowledgments
-
-- Whisper AI by OpenAI for transcription
-- Google Gemini for AI analysis
-- PyQt6 for the UI framework
-- FastAPI for the microservice architecture
-
-## Support
-
-For issues and questions:
-- Check the troubleshooting section above
-- Review component-specific READMEs
-- Create an issue on GitHub
-
----
-
-**Made with focus. Powered by AI.**
 
