@@ -108,6 +108,7 @@ class AudioCapture:
         """Setup both speaker loopback AND microphone"""
         try:
             p = pyaudio.PyAudio()
+            print("In setup audio deviecs")
 
             if SYSTEM == "Windows" and AUDIO_BACKEND == "pyaudiowpatch":
                 # Get speaker loopback (for other people's audio)
@@ -138,23 +139,35 @@ class AudioCapture:
                     print(f"⚠️  Could not setup microphone: {e}")
 
             elif SYSTEM == "Darwin":  # macOS
+                devices = []
+                output_index = 0
                 for i in range(p.get_device_count()):
-                    dev = p.get_device_info_by_index(i)
-                    if (
-                        "blackhole" in dev["name"].lower()
-                        or "soundflower" in dev["name"].lower()
-                    ):
-                        self.speaker_device = dev
-                        print(f"🔊 macOS virtual device: {dev['name']}")
-                        break
-
+                    device_info = p.get_device_info_by_index(i)
+                    devices.append({
+                        'index': i,
+                        'name': device_info['name'],
+                        'channels': device_info['maxInputChannels'],
+                        'sample_rate': int(device_info['defaultSampleRate'])
+                    })
+                for device in devices:
+                    if device['name'] == "Built-in Output":
+                        output_index = device['index']
+                dev = p.get_device_info_by_index(output_index)
+                self.speaker_device = dev
+                print(f"🔊 macOS virtual device: {dev['name']}")
+                # if (
+                #     "blackhole" in dev["name"].lower()
+                #     or "soundflower" in dev["name"].lower()
+                # ):
+                #     self.speaker_device = dev
+                #     print(f"🔊 macOS virtual device: {dev['name']}")
+                #     break\
                 try:
                     default_mic = p.get_default_input_device_info()
                     self.mic_device = default_mic
                     print(f"🎤 Microphone: {default_mic['name']}")
                 except Exception as e:
                     print(f"⚠️  Could not setup microphone: {e}")
-
             else:  # Linux
                 for i in range(p.get_device_count()):
                     dev = p.get_device_info_by_index(i)
