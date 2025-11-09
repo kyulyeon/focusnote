@@ -551,9 +551,13 @@ class AudioCapture:
             elif not is_any_call_active and dnd_enabled_for_call:
                 # No call active but DND is on - disable it
                 print(f"🔔 Disabling DND (no active call)")
+
+            if is_any_call_active:
                 sys.stdout.flush()
-                self.dnd_controller.disable_dnd()
-                dnd_enabled_for_call = False
+
+            elif not is_any_call_active:
+                sys.stdout.flush()
+
             # --- State Machine Logic ---
 
             if not self.in_call:
@@ -686,4 +690,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
