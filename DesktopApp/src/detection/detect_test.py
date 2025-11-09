@@ -51,7 +51,7 @@ class AudioCapture:
         # Audio settings
         self.chunk = 1024
         self.format = pyaudio.paInt16
-        self.rate = 48000
+        self.rate = 48000  # Use standard 48kHz to match device native rates
 
         os.makedirs(output_dir, exist_ok=True)
 
@@ -107,6 +107,8 @@ class AudioCapture:
                 'pipe:1'
             ]
             
+            print(f"🔍 DEBUG: Starting ffmpeg with sample rate: {self.rate} Hz")
+            
             self.ffmpeg_process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
@@ -114,7 +116,7 @@ class AudioCapture:
                 bufsize=10**8
             )
             
-            print(f"✅ ffmpeg system audio capture started")
+            print(f"✅ ffmpeg system audio capture started at {self.rate} Hz, 2 channels")
             
             # Start thread to read from ffmpeg
             def read_ffmpeg():
@@ -318,6 +320,16 @@ class AudioCapture:
         process_names = ["teams.exe", "teams", "Teams"]
         return self.is_process_active(process_names, cpu_threshold=self.cpu_threshold)
 
+    def mono_to_stereo(self, mono_data):
+        """Convert mono audio to stereo by duplicating the channel"""
+        samples = struct.unpack(f"{len(mono_data) // 2}h", mono_data)
+        # Duplicate each sample for left and right channels
+        stereo = []
+        for sample in samples:
+            stereo.append(sample)  # Left channel
+            stereo.append(sample)  # Right channel
+        return struct.pack(f"{len(stereo)}h", *stereo)
+
     def mix_audio_simple(self, data1, data2):
         """Simple audio mixing - handles different buffer sizes"""
         min_len = min(len(data1), len(data2))
@@ -353,7 +365,7 @@ class AudioCapture:
         def record():
             frames = []
             channels = 2
-            sample_rate = 48000
+            sample_rate = self.rate
             recording_active = True
             ffmpeg_started = False
 
@@ -388,8 +400,12 @@ class AudioCapture:
 
                 # Open microphone stream (all platforms)
                 if self.mic_device:
+                    # Use mic's native channel count (usually 1 for built-in mics)
                     channels_mic = min(self.mic_device.get("maxInputChannels", 2), 2)
-                    rate_mic = int(self.mic_device.get("defaultSampleRate", self.rate))
+                    # Force the mic to use the same rate as ffmpeg/self.rate
+                    rate_mic = self.rate  # Force to match ffmpeg capture rate
+                    print(f"🔍 DEBUG: Mic native rate: {self.mic_device.get('defaultSampleRate')}, forcing to: {rate_mic}")
+                    print(f"🔍 DEBUG: Mic native channels: {self.mic_device.get('maxInputChannels')}, using: {channels_mic}")
                     self.stream_mic = self.p.open(
                         format=self.format,
                         channels=channels_mic,
@@ -398,10 +414,12 @@ class AudioCapture:
                         frames_per_buffer=self.chunk,
                         input_device_index=self.mic_device["index"],
                     )
+                    # If mic-only and not macOS, use mic's native channels
+                    # On macOS with ffmpeg, we keep channels=2 (default set earlier)
                     if not self.speaker_device and SYSTEM != "Darwin":
                         sample_rate = rate_mic
                         channels = channels_mic
-                    print(f"✅ Mic: {channels_mic}ch @ {rate_mic}Hz")
+                    print(f"✅ Mic: {channels_mic}ch @ {rate_mic}Hz (will be converted to stereo if needed)")
 
                 print("🎬 Recording...\n")
                 sys.stdout.flush()
@@ -432,6 +450,9 @@ class AudioCapture:
                                 mic_data = self.stream_mic.read(
                                     self.chunk, exception_on_overflow=False
                                 )
+                                # Convert mono mic to stereo if needed (for macOS)
+                                if channels_mic == 1 and mic_data:
+                                    mic_data = self.mono_to_stereo(mic_data)
                             except:
                                 pass
 
@@ -512,6 +533,7 @@ class AudioCapture:
                 if len(frames) > 0:
                     try:
                         print(f"💾 Saving...")
+                        print(f"🔍 DEBUG: WAV file params - Rate: {sample_rate} Hz, Channels: {channels}")
                         sys.stdout.flush()
 
                         temp_p = pyaudio.PyAudio()

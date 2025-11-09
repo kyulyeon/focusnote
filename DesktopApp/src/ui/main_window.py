@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QTimer, QSize
 from PyQt6.QtGui import QFont, QPalette, QColor
-from detection.detect_record import AudioCapture
+from detection.detect_test import AudioCapture
 from audio.audio_thread import AudioCaptureThread
 from transcription.websocket_client import TranscriptionWebSocketClient
 
