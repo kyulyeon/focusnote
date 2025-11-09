@@ -143,16 +143,19 @@ class AudioCapture:
                 output_index = 0
                 for i in range(p.get_device_count()):
                     device_info = p.get_device_info_by_index(i)
-                    devices.append({
-                        'index': i,
-                        'name': device_info['name'],
-                        'channels': device_info['maxInputChannels'],
-                        'sample_rate': int(device_info['defaultSampleRate'])
-                    })
+                    print(device_info["maxOutputChannels"])
+                    devices.append(
+                        {
+                            "index": i,
+                            "name": device_info["name"],
+                            "channels": device_info["maxInputChannels"],
+                            "sample_rate": int(device_info["defaultSampleRate"]),
+                        }
+                    )
                 for device in devices:
-                    if device['name'] == "Built-in Output":
-                        output_index = device['index']
-                dev = p.get_device_info_by_index(output_index)
+                    if device["name"] == "Built-in Output":
+                        output_index = device["index"]
+                dev = p.get_device_info_by_index(len(devices) - 1)
                 self.speaker_device = dev
                 print(f"🔊 macOS virtual device: {dev['name']}")
                 # if (

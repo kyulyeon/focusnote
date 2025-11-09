@@ -1,6 +1,14 @@
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-    QLabel, QGroupBox, QCheckBox, QFrame, QScrollArea
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel,
+    QGroupBox,
+    QCheckBox,
+    QFrame,
+    QScrollArea,
 )
 from PyQt6.QtCore import Qt, QTimer, QSize
 from PyQt6.QtGui import QFont, QPalette, QColor
@@ -24,32 +32,32 @@ class MainWindow(QMainWindow):
         
         self.init_ui()
         self.apply_styles()
-        
+
         # Set up status update timer
         self.status_timer = QTimer()
         self.status_timer.timeout.connect(self.update_status)
         self.status_timer.start(1000)
-        
+
         # Start the capture thread
         self.capture_thread.start()
-        
+
     def init_ui(self):
         """Initialize the user interface"""
         self.setWindowTitle("FocusNote")
         self.setGeometry(100, 100, 420, 600)
         self.setMinimumSize(400, 550)
-        
+
         # Create central widget and main layout
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(20)
-        
+
         # Header Section
         header_layout = QVBoxLayout()
         header_layout.setSpacing(5)
-        
+
         title = QLabel("FocusNote")
         title_font = QFont()
         title_font.setPointSize(28)
@@ -57,7 +65,7 @@ class MainWindow(QMainWindow):
         title.setFont(title_font)
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header_layout.addWidget(title)
-        
+
         subtitle = QLabel("Focus on the conversation. We'll handle the notes.")
         subtitle_font = QFont()
         subtitle_font.setPointSize(10)
@@ -65,22 +73,22 @@ class MainWindow(QMainWindow):
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitle.setStyleSheet("color: #666666;")
         header_layout.addWidget(subtitle)
-        
+
         main_layout.addLayout(header_layout)
-        
+
         # Main Status Card
         status_card = QFrame()
         status_card.setObjectName("statusCard")
         status_card_layout = QVBoxLayout(status_card)
         status_card_layout.setContentsMargins(20, 20, 20, 20)
         status_card_layout.setSpacing(15)
-        
+
         # Status indicator
         status_header = QHBoxLayout()
         self.status_icon = QLabel("●")
         self.status_icon.setStyleSheet("color: #999999; font-size: 24px;")
         status_header.addWidget(self.status_icon)
-        
+
         self.status_label = QLabel("Status: Idle")
         status_font = QFont()
         status_font.setPointSize(14)
@@ -88,110 +96,112 @@ class MainWindow(QMainWindow):
         self.status_label.setFont(status_font)
         status_header.addWidget(self.status_label)
         status_header.addStretch()
-        
+
         status_card_layout.addLayout(status_header)
-        
+
         # Separator line
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
         line.setStyleSheet("background-color: #e0e0e0;")
         status_card_layout.addWidget(line)
-        
+
         # Platform detection section
         platforms_label = QLabel("Active Platforms")
-        platforms_label.setStyleSheet("color: #666666; font-weight: bold; font-size: 11px;")
+        platforms_label.setStyleSheet(
+            "color: #666666; font-weight: bold; font-size: 11px;"
+        )
         status_card_layout.addWidget(platforms_label)
-        
+
         # Discord status
         discord_layout = QHBoxLayout()
         self.discord_icon = QLabel("◉")
         self.discord_icon.setStyleSheet("color: #999999; font-size: 18px;")
         discord_layout.addWidget(self.discord_icon)
-        
+
         self.discord_status_label = QLabel("Discord")
         discord_status_font = QFont()
         discord_status_font.setPointSize(12)
         self.discord_status_label.setFont(discord_status_font)
         discord_layout.addWidget(self.discord_status_label)
         discord_layout.addStretch()
-        
+
         self.discord_cpu_label = QLabel("")
         self.discord_cpu_label.setStyleSheet("color: #999999; font-size: 11px;")
         discord_layout.addWidget(self.discord_cpu_label)
-        
+
         status_card_layout.addLayout(discord_layout)
-        
+
         # Zoom status
         zoom_layout = QHBoxLayout()
         self.zoom_icon = QLabel("◉")
         self.zoom_icon.setStyleSheet("color: #999999; font-size: 18px;")
         zoom_layout.addWidget(self.zoom_icon)
-        
+
         self.zoom_status_label = QLabel("Zoom")
         zoom_status_font = QFont()
         zoom_status_font.setPointSize(12)
         self.zoom_status_label.setFont(zoom_status_font)
         zoom_layout.addWidget(self.zoom_status_label)
         zoom_layout.addStretch()
-        
+
         self.zoom_cpu_label = QLabel("")
         self.zoom_cpu_label.setStyleSheet("color: #999999; font-size: 11px;")
         zoom_layout.addWidget(self.zoom_cpu_label)
-        
+
         status_card_layout.addLayout(zoom_layout)
-        
+
         main_layout.addWidget(status_card)
-        
+
         # Settings Section
         settings_group = QGroupBox("Settings")
         settings_group.setObjectName("settingsGroup")
         settings_layout = QVBoxLayout()
         settings_layout.setContentsMargins(15, 20, 15, 15)
         settings_layout.setSpacing(12)
-        
+
         self.auto_start_checkbox = QCheckBox("Auto-start monitoring on launch")
         self.auto_start_checkbox.setStyleSheet("font-size: 12px;")
         self.auto_start_checkbox.stateChanged.connect(self.on_auto_start_changed)
         settings_layout.addWidget(self.auto_start_checkbox)
-        
+
         self.auto_dnd_checkbox = QCheckBox("Enable Do Not Disturb during calls")
         self.auto_dnd_checkbox.setStyleSheet("font-size: 12px;")
         self.auto_dnd_checkbox.setChecked(False)
         settings_layout.addWidget(self.auto_dnd_checkbox)
-        
+
         self.save_transcripts_checkbox = QCheckBox("Save transcripts automatically")
         self.save_transcripts_checkbox.setStyleSheet("font-size: 12px;")
         self.save_transcripts_checkbox.setChecked(False)
         settings_layout.addWidget(self.save_transcripts_checkbox)
-        
+
         settings_group.setLayout(settings_layout)
         main_layout.addWidget(settings_group)
-        
+
         # Action Buttons
         buttons_layout = QHBoxLayout()
         buttons_layout.setSpacing(10)
-        
+
         self.view_notes_btn = QPushButton("View Notes Hub")
         self.view_notes_btn.setObjectName("secondaryButton")
         self.view_notes_btn.setMinimumHeight(40)
         buttons_layout.addWidget(self.view_notes_btn)
-        
+
         self.settings_btn = QPushButton("Advanced Settings")
         self.settings_btn.setObjectName("secondaryButton")
         self.settings_btn.setMinimumHeight(40)
         buttons_layout.addWidget(self.settings_btn)
-        
+
         main_layout.addLayout(buttons_layout)
-        
+
         # Push everything to the top
         main_layout.addStretch()
-        
+
         # Footer
         footer = QLabel("Desktop Meeting Assistant")
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
         footer.setStyleSheet("color: #999999; font-size: 10px; padding: 10px;")
         main_layout.addWidget(footer)
-    
+
     def apply_styles(self):
         """Apply modern stylesheet to the application"""
         self.setStyleSheet("""
@@ -263,14 +273,18 @@ class MainWindow(QMainWindow):
                 background-color: #eeeeee;
             }
         """)
-    
+
     def update_status(self):
         """Periodically check and update all status labels"""
         # Check Discord status
-        discord_active, discord_name, discord_cpu = self.audio_capture.detect_discord_call()
+        discord_active, discord_name, discord_cpu = (
+            self.audio_capture.detect_discord_call()
+        )
         if discord_active:
             self.discord_status_label.setText("Discord")
-            self.discord_status_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
+            self.discord_status_label.setStyleSheet(
+                "color: #4CAF50; font-weight: bold;"
+            )
             self.discord_icon.setStyleSheet("color: #4CAF50; font-size: 18px;")
             self.discord_cpu_label.setText(f"{discord_cpu:.1f}% CPU")
         else:
@@ -278,7 +292,7 @@ class MainWindow(QMainWindow):
             self.discord_status_label.setStyleSheet("color: #999999;")
             self.discord_icon.setStyleSheet("color: #999999; font-size: 18px;")
             self.discord_cpu_label.setText("Not detected")
-        
+
         # Check Zoom status
         zoom_active, zoom_name, zoom_cpu = self.audio_capture.detect_zoom_call()
         if zoom_active:
@@ -291,11 +305,11 @@ class MainWindow(QMainWindow):
             self.zoom_status_label.setStyleSheet("color: #999999;")
             self.zoom_icon.setStyleSheet("color: #999999; font-size: 18px;")
             self.zoom_cpu_label.setText("Not detected")
-        
+
         # Check recording status
         is_recording = self.audio_capture.is_recording
         platform = self.audio_capture.active_platform
-        
+
         if is_recording and platform:
             self.status_label.setText(f"Recording {platform.upper()}")
             self.status_label.setStyleSheet("color: #f44336; font-weight: bold;")
@@ -308,7 +322,7 @@ class MainWindow(QMainWindow):
             self.status_label.setText("Idle")
             self.status_label.setStyleSheet("color: #999999; font-weight: bold;")
             self.status_icon.setStyleSheet("color: #999999; font-size: 24px;")
-    
+
     def on_auto_start_changed(self, state):
         """Handle auto-start checkbox change"""
         # Implement auto-start logic here
