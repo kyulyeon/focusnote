@@ -7,6 +7,7 @@ import os
 import sys
 import platform
 import struct
+import queue
 
 # Import appropriate audio library based on OS
 SYSTEM = platform.system()
@@ -66,6 +67,12 @@ class AudioCapture:
         self.inactive_count = 0
         self.inactive_threshold = 3  # User preference: 3 seconds
         
+        # Audio streaming queue for transcription
+        self.audio_stream_queue = queue.Queue(maxsize=100)
+        
+        # Callback for real-time audio processing
+        self.audio_callback = None        
+
         # Audio device setup
         self.speaker_device = None
         self.mic_device = None
@@ -73,6 +80,23 @@ class AudioCapture:
         
         print(f"🖥️  Platform: {SYSTEM}")
         print(f"🎵 Audio backend: {AUDIO_BACKEND}\n")
+
+    def set_audio_callback(self, callback):
+        """
+        Set a callback function that will be called with each audio chunk
+        callback should accept: (audio_data: bytes, sample_rate: int, channels: int)
+        """
+        self.audio_callback = callback
+    
+    def get_audio_chunk(self, timeout=None):
+        """
+        Get the next audio chunk from the queue (blocking)
+        Returns: (audio_data: bytes, sample_rate: int, channels: int) or None if timeout
+        """
+        try:
+            return self.audio_stream_queue.get(timeout=timeout)
+        except queue.Empty:
+            return None
         
     def setup_audio_devices(self):
         """Setup both speaker loopback AND microphone"""
@@ -312,15 +336,33 @@ class AudioCapture:
                                 pass
                         
                         # Combine audio
+                        audio_chunk = None
                         if speaker_data and mic_data:
-                            mixed = self.mix_audio_simple(speaker_data, mic_data)
-                            frames.append(mixed)
+                            audio_chunk = self.mix_audio_simple(speaker_data, mic_data)
                         elif speaker_data:
-                            frames.append(speaker_data)
+                            audio_chunk = speaker_data
                         elif mic_data:
-                            frames.append(mic_data)
+                            audio_chunk = mic_data
                         else:
                             recording_active = False
+                            continue
+
+                        # Save to frames for file backup
+                        frames.append(audio_chunk)
+                        
+                        # Stream to transcription
+                        # Put in queue
+                        try:
+                            self.audio_stream_queue.put_nowait((audio_chunk, sample_rate, channels))
+                        except queue.Full:
+                            pass  # Drop frame if queue is full
+                        
+                        # Call callback if registered
+                        if self.audio_callback:
+                            try:
+                                self.audio_callback(audio_chunk, sample_rate, channels)
+                            except Exception as e:
+                                print(f"⚠️  Callback error: {e}")
                             
                     except Exception as e:
                         if self.is_recording:
