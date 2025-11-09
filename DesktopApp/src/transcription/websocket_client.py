@@ -57,7 +57,7 @@ class TranscriptionWebSocketClient:
 
                     # Audio buffer for accumulating chunks
                     audio_buffer = []
-                    target_samples = 16000 * 5  # 2 seconds at 16kHz (smaller chunks)
+                    target_duration = 5.0  # Accumulate 5 seconds of audio
                     current_sample_rate = None
                     current_channels = None
 
@@ -86,9 +86,13 @@ class TranscriptionWebSocketClient:
                         total_samples = total_bytes // (
                             channels * 2
                         )  # 2 bytes per sample (int16)
+                        
+                        # Calculate duration based on original sample rate
+                        duration_seconds = total_samples / sample_rate
 
-                        # Send when buffer has enough samples
-                        if total_samples >= target_samples:
+                        # Send when buffer has enough duration (accounts for resampling)
+                        if duration_seconds >= target_duration:
+                            print(f"📦 Accumulated {duration_seconds:.1f}s of audio, sending to transcription...")
                             await self._send_buffer(
                                 audio_buffer, current_sample_rate, current_channels
                             )
@@ -126,15 +130,17 @@ class TranscriptionWebSocketClient:
             # Convert to float32 normalized to [-1, 1]
             float32_data = int16_data.astype(np.float32) / 32768.0
 
-            # Ensure we have at least 1.5 seconds (server requirement)
-            min_samples = int(16000 * 3)
+            # Ensure we have at least 2 seconds (server requirement)
+            min_samples = int(16000 * 2)
             if len(float32_data) < min_samples:
+                # Pad with zeros if slightly short
+                padding = min_samples - len(float32_data)
+                float32_data = np.pad(float32_data, (0, padding), mode='constant')
                 print(
-                    f"⚠️  Buffer too short ({len(float32_data)} samples), padding to {min_samples}"
+                    f"⚠️  Buffer slightly short, padded {padding} samples to reach {min_samples}"
                 )
-                return
 
-            # Ensure we don't exceed reasonable limits (5 seconds max)
+            # Ensure we don't exceed reasonable limits (10 seconds max)
             max_samples = int(16000 * 10)
             if len(float32_data) > max_samples:
                 print(
