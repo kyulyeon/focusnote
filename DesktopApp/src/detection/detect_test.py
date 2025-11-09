@@ -17,17 +17,14 @@ SYSTEM = platform.system()
 if SYSTEM == "Windows":
     try:
         import pyaudiowpatch as pyaudio
-
         AUDIO_BACKEND = "pyaudiowpatch"
     except ImportError:
         print("⚠️  PyAudioWPatch not found. Install with: pip install pyaudiowpatch")
         import pyaudio
-
         AUDIO_BACKEND = "pyaudio"
 elif SYSTEM == "Darwin":  # macOS
     try:
         import pyaudio
-
         AUDIO_BACKEND = "pyaudio"
     except ImportError:
         print("⚠️  PyAudio not found. Install with: pip install pyaudio")
@@ -35,7 +32,6 @@ elif SYSTEM == "Darwin":  # macOS
 else:  # Linux
     try:
         import pyaudio
-
         AUDIO_BACKEND = "pyaudio"
     except ImportError:
         print("⚠️  PyAudio not found. Install with: pip install pyaudio")
@@ -72,17 +68,19 @@ class AudioCapture:
 
         # Inactivity threshold
         self.inactive_count = 0
-        self.inactive_threshold = 3  # User preference: 3 seconds
+        self.inactive_threshold = 3
 
         # Audio streaming queue for transcription
         self.audio_stream_queue = queue.Queue(maxsize=100)
 
         # Callback for real-time audio processing
         self.audio_callback = None
+        
         # macOS ffmpeg process
         self.ffmpeg_process = None
         self.ffmpeg_thread = None
         self.ffmpeg_queue = queue.Queue(maxsize=50)
+        
         # Audio device setup
         self.speaker_device = None
         self.mic_device = None
@@ -91,79 +89,77 @@ class AudioCapture:
         print(f"🖥️  Platform: {SYSTEM}")
         print(f"🎵 Audio backend: {AUDIO_BACKEND}\n")
 
-
-def start_ffmpeg_capture(self):
-    """Start ffmpeg system audio capture for macOS"""
-    if SYSTEM != "Darwin":
-        return
-
-    try:
-        # Start capturing
-        cmd = [
-            "ffmpeg",
-            "-f",
-            "avfoundation",
-            "-i",
-            ":0",  # Audio device
-            "-f",
-            "s16le",
-            "-acodec",
-            "pcm_s16le",
-            "-ar",
-            str(self.rate),
-            "-ac",
-            "2",
-            "pipe:1",
-        ]
-
-        self.ffmpeg_process = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=10**8
-        )
-
-        print(f"✅ ffmpeg system audio capture started")
-
-        # Start thread to read from ffmpeg
-        def read_ffmpeg():
-            chunk_size = self.chunk * 2 * 2  # samples * channels * bytes
-            while self.is_recording and self.ffmpeg_process:
-                try:
-                    raw_data = self.ffmpeg_process.stdout.read(chunk_size)
-                    if not raw_data:
-                        break
-                    try:
-                        self.ffmpeg_queue.put_nowait(raw_data)
-                    except queue.Full:
-                        pass
-                except Exception as e:
-                    if self.is_recording:
-                        print(f"⚠️  ffmpeg read error: {e}")
-                    break
-
-        self.ffmpeg_thread = threading.Thread(target=read_ffmpeg, daemon=True)
-        self.ffmpeg_thread.start()
-
-    except FileNotFoundError:
-        print("❌ ffmpeg not found. Install with: brew install ffmpeg")
-        print("   Falling back to microphone only")
-    except Exception as e:
-        print(f"⚠️  Could not start ffmpeg: {e}")
-
-
-def stop_ffmpeg_capture(self):
-    """Stop ffmpeg system audio capture"""
-    if self.ffmpeg_process:
+    def start_ffmpeg_capture(self):
+        """Start ffmpeg system audio capture for macOS"""
+        if SYSTEM != "Darwin":
+            return False
+        
         try:
-            self.ffmpeg_process.terminate()
-            self.ffmpeg_process.wait(timeout=2)
-        except:
-            try:
-                self.ffmpeg_process.kill()
-            except:
-                pass
-        self.ffmpeg_process = None
+            # Start capturing system audio
+            cmd = [
+                'ffmpeg',
+                '-f', 'avfoundation',
+                '-i', ':0',  # Audio device (index 0 is usually the default)
+                '-f', 's16le',
+                '-acodec', 'pcm_s16le',
+                '-ar', str(self.rate),
+                '-ac', '2',
+                'pipe:1'
+            ]
+            
+            self.ffmpeg_process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                bufsize=10**8
+            )
+            
+            print(f"✅ ffmpeg system audio capture started")
+            
+            # Start thread to read from ffmpeg
+            def read_ffmpeg():
+                chunk_size = self.chunk * 2 * 2  # samples * channels * bytes
+                while self.is_recording and self.ffmpeg_process:
+                    try:
+                        raw_data = self.ffmpeg_process.stdout.read(chunk_size)
+                        if not raw_data:
+                            break
+                        try:
+                            self.ffmpeg_queue.put_nowait(raw_data)
+                        except queue.Full:
+                            pass
+                    except Exception as e:
+                        if self.is_recording:
+                            print(f"⚠️  ffmpeg read error: {e}")
+                        break
+            
+            self.ffmpeg_thread = threading.Thread(target=read_ffmpeg, daemon=True)
+            self.ffmpeg_thread.start()
+            return True
+            
+        except FileNotFoundError:
+            print("❌ ffmpeg not found. Install with: brew install ffmpeg")
+            print("   Falling back to microphone only")
+            return False
+        except Exception as e:
+            print(f"⚠️  Could not start ffmpeg: {e}")
+            return False
 
-    if self.ffmpeg_thread and self.ffmpeg_thread.is_alive():
-        self.ffmpeg_thread.join(timeout=1)
+    def stop_ffmpeg_capture(self):
+        """Stop ffmpeg system audio capture"""
+        if self.ffmpeg_process:
+            try:
+                self.ffmpeg_process.terminate()
+                self.ffmpeg_process.wait(timeout=2)
+            except:
+                try:
+                    self.ffmpeg_process.kill()
+                except:
+                    pass
+            self.ffmpeg_process = None
+        
+        if self.ffmpeg_thread and self.ffmpeg_thread.is_alive():
+            self.ffmpeg_thread.join(timeout=1)
 
     def set_audio_callback(self, callback):
         """
@@ -216,16 +212,10 @@ def stop_ffmpeg_capture(self):
                     print(f"⚠️  Could not setup microphone: {e}")
 
             elif SYSTEM == "Darwin":  # macOS
-                for i in range(p.get_device_count()):
-                    dev = p.get_device_info_by_index(i)
-                    if (
-                        "blackhole" in dev["name"].lower()
-                        or "soundflower" in dev["name"].lower()
-                    ):
-                        self.speaker_device = dev
-                        print(f"🔊 macOS virtual device: {dev['name']}")
-                        break
-
+                # On macOS, we'll use ffmpeg for system audio instead of PyAudio
+                print("🍎 macOS detected - will use ffmpeg for system audio capture")
+                
+                # Still set up microphone for user's voice
                 try:
                     default_mic = p.get_default_input_device_info()
                     self.mic_device = default_mic
@@ -250,7 +240,11 @@ def stop_ffmpeg_capture(self):
 
             p.terminate()
 
-            if not self.speaker_device and not self.mic_device:
+            if SYSTEM == "Darwin":
+                # On macOS, we don't need speaker_device for PyAudio
+                if not self.mic_device:
+                    print("⚠️  Warning: No microphone found")
+            elif not self.speaker_device and not self.mic_device:
                 print("⚠️  Warning: Could not find any audio devices")
             elif not self.speaker_device:
                 print("⚠️  Warning: No speaker loopback (recording mic only)")
@@ -326,26 +320,22 @@ def stop_ffmpeg_capture(self):
 
     def mix_audio_simple(self, data1, data2):
         """Simple audio mixing - handles different buffer sizes"""
-        # Ensure both are the same length
         min_len = min(len(data1), len(data2))
         data1 = data1[:min_len]
         data2 = data2[:min_len]
 
-        # Unpack as signed 16-bit integers
         samples1 = struct.unpack(f"{min_len // 2}h", data1)
         samples2 = struct.unpack(f"{min_len // 2}h", data2)
 
-        # Mix by averaging
         mixed = [(s1 + s2) // 2 for s1, s2 in zip(samples1, samples2)]
 
-        # Pack back to bytes
         return struct.pack(f"{len(mixed)}h", *mixed)
 
     def start_recording(self, platform_name=None):
         if self.is_recording:
             return
 
-        if not self.speaker_device and not self.mic_device:
+        if SYSTEM != "Darwin" and not self.speaker_device and not self.mic_device:
             print("❌ Cannot record: No audio devices available")
             return
 
@@ -356,8 +346,6 @@ def stop_ffmpeg_capture(self):
         filename = os.path.join(self.output_dir, f"meeting{platform}_{timestamp}.wav")
 
         print(f"\n🎙️ Recording to: {filename}")
-        if self.speaker_device:
-            print(f"🔊 Speakers: {self.speaker_device['name']}")
         if self.mic_device:
             print(f"🎤 Microphone: {self.mic_device['name']}")
         sys.stdout.flush()
@@ -367,12 +355,19 @@ def stop_ffmpeg_capture(self):
             channels = 2
             sample_rate = 48000
             recording_active = True
+            ffmpeg_started = False
 
             try:
                 self.p = pyaudio.PyAudio()
 
-                # Open speaker stream
-                if self.speaker_device:
+                # macOS: Start ffmpeg for system audio
+                if SYSTEM == "Darwin":
+                    ffmpeg_started = self.start_ffmpeg_capture()
+                    if ffmpeg_started:
+                        print("✅ System audio: ffmpeg capture")
+
+                # Windows/Linux: Open speaker stream
+                if SYSTEM != "Darwin" and self.speaker_device:
                     channels_spk = min(
                         self.speaker_device.get("maxInputChannels", 2), 2
                     )
@@ -391,7 +386,7 @@ def stop_ffmpeg_capture(self):
                     channels = channels_spk
                     print(f"✅ Speaker: {channels_spk}ch @ {rate_spk}Hz")
 
-                # Open microphone stream
+                # Open microphone stream (all platforms)
                 if self.mic_device:
                     channels_mic = min(self.mic_device.get("maxInputChannels", 2), 2)
                     rate_mic = int(self.mic_device.get("defaultSampleRate", self.rate))
@@ -403,7 +398,7 @@ def stop_ffmpeg_capture(self):
                         frames_per_buffer=self.chunk,
                         input_device_index=self.mic_device["index"],
                     )
-                    if not self.speaker_device:
+                    if not self.speaker_device and SYSTEM != "Darwin":
                         sample_rate = rate_mic
                         channels = channels_mic
                     print(f"✅ Mic: {channels_mic}ch @ {rate_mic}Hz")
@@ -417,8 +412,13 @@ def stop_ffmpeg_capture(self):
                         speaker_data = None
                         mic_data = None
 
-                        # Read speaker audio
-                        if self.stream_speaker:
+                        # Read speaker audio (Windows/Linux: PyAudio, macOS: ffmpeg)
+                        if SYSTEM == "Darwin" and ffmpeg_started:
+                            try:
+                                speaker_data = self.ffmpeg_queue.get(timeout=0.1)
+                            except queue.Empty:
+                                pass
+                        elif self.stream_speaker:
                             try:
                                 speaker_data = self.stream_speaker.read(
                                     self.chunk, exception_on_overflow=False
@@ -444,22 +444,20 @@ def stop_ffmpeg_capture(self):
                         elif mic_data:
                             audio_chunk = mic_data
                         else:
-                            recording_active = False
                             continue
 
-                        # Save to frames for file backup
+                        # Save to frames
                         frames.append(audio_chunk)
 
                         # Stream to transcription
-                        # Put in queue
                         try:
                             self.audio_stream_queue.put_nowait(
                                 (audio_chunk, sample_rate, channels)
                             )
                         except queue.Full:
-                            pass  # Drop frame if queue is full
+                            pass
 
-                        # Call callback if registered
+                        # Call callback
                         if self.audio_callback:
                             try:
                                 self.audio_callback(audio_chunk, sample_rate, channels)
@@ -478,11 +476,14 @@ def stop_ffmpeg_capture(self):
             except Exception as e:
                 print(f"❌ Setup error: {e}")
                 import traceback
-
                 traceback.print_exc()
                 sys.stdout.flush()
 
             finally:
+                # Stop ffmpeg (macOS)
+                if SYSTEM == "Darwin":
+                    self.stop_ffmpeg_capture()
+
                 # Cleanup streams
                 if self.stream_speaker:
                     try:
@@ -530,7 +531,6 @@ def stop_ffmpeg_capture(self):
                     except Exception as e:
                         print(f"❌ Save error: {e}")
                         import traceback
-
                         traceback.print_exc()
                         sys.stdout.flush()
                 else:
@@ -547,22 +547,8 @@ def stop_ffmpeg_capture(self):
         print("⏹️ Stopping...")
         sys.stdout.flush()
 
-        # 1. Signal the recording thread to stop
         self.is_recording = False
 
-        # 2. Wait for the recording thread to finish its OWN cleanup and saving
-        #    (Its 'finally' block will handle closing streams)
-        if self.audio_thread and self.audio_thread.is_alive():
-            self.audio_thread.join(timeout=3)  # Wait for it to save the file
-            if self.audio_thread.is_alive():
-                print("⚠️ Recording thread still running (will finish in background)")
-                sys.stdout.flush()
-
-        # 3. Now that the thread is done, we can safely report completion
-        print("✅ Stop complete")
-        sys.stdout.flush()
-
-        # Wait for thread to finish - DON'T let it block forever
         if self.audio_thread and self.audio_thread.is_alive():
             self.audio_thread.join(timeout=3)
             if self.audio_thread.is_alive():
@@ -580,12 +566,10 @@ def stop_ffmpeg_capture(self):
 
         check_count = 0
         while self.running:
-            # 1. Check all potential platforms
             zoom_active, zoom_name, zoom_cpu = self.detect_zoom_call()
             discord_active, discord_name, discord_cpu = self.detect_discord_call()
             teams_active, teams_name, teams_cpu = self.detect_teams_call()
 
-            # 2. Status printing (this is fine)
             check_count += 1
             if check_count % 30 == 0 and not self.in_call:
                 status = []
@@ -601,34 +585,21 @@ def stop_ffmpeg_capture(self):
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] {' | '.join(status)}")
                 sys.stdout.flush()
 
-            # 3. Determine current call state
             current_platform = None
             is_any_call_active = False
 
             if zoom_active:
                 current_platform = "zoom"
                 is_any_call_active = True
-            elif discord_active:  # Use elif to prioritize one app at a time
+            elif discord_active:
                 current_platform = "discord"
                 is_any_call_active = True
             elif teams_active:
                 current_platform = "teams"
                 is_any_call_active = True
 
-                sys.stdout.flush()
-
-            if is_any_call_active:
-                sys.stdout.flush()
-
-            elif not is_any_call_active:
-                sys.stdout.flush()
-
-            # --- State Machine Logic ---
-
             if not self.in_call:
-                # --- STATE: NOT IN CALL (NOT RECORDING) ---
                 if is_any_call_active:
-                    # A call is active, start confirmation counter
                     self.inactive_count = 0
                     self.call_detected_count += 1
                     print(
@@ -642,19 +613,12 @@ def stop_ffmpeg_capture(self):
 
                         self.start_recording(current_platform)
                         self.in_call = True
-                        self.active_platform = (
-                            current_platform  # ⭐️ Store which platform started
-                        )
+                        self.active_platform = current_platform
                         self.call_detected_count = 0
                 else:
-                    # No call active, reset detection counter
                     self.call_detected_count = 0
 
             else:
-                # --- STATE: IN CALL (RECORDING) ---
-                # We are recording, so self.active_platform is set (e.g., "zoom")
-
-                # Check if the *specific* platform that started the recording is still active
                 is_original_call_active = False
                 if self.active_platform == "zoom" and zoom_active:
                     is_original_call_active = True
@@ -664,14 +628,10 @@ def stop_ffmpeg_capture(self):
                     is_original_call_active = True
 
                 if is_original_call_active:
-                    # The call is still ongoing. Reset inactivity.
                     self.inactive_count = 0
                 else:
-                    # The call that triggered the recording seems to have ended.
-                    # Start the inactivity countdown.
                     self.inactive_count += 1
 
-                    # Only show countdown occasionally to reduce spam
                     if self.inactive_count % 3 == 0:
                         print(
                             f"⏳ Inactive {self.inactive_count}/{self.inactive_threshold}s"
@@ -679,14 +639,13 @@ def stop_ffmpeg_capture(self):
                         sys.stdout.flush()
 
                     if self.inactive_count >= self.inactive_threshold:
-                        # Inactivity threshold met! Stop the recording.
                         print(
                             f"\n📴 {self.active_platform.upper()} call ended (inactive {self.inactive_threshold}s)"
                         )
                         sys.stdout.flush()
                         self.stop_recording()
                         self.in_call = False
-                        self.active_platform = None  # ⭐️ Clear the active platform
+                        self.active_platform = None
                         self.inactive_count = 0
                         print("👀 Back to monitoring...\n")
                         sys.stdout.flush()
@@ -740,12 +699,10 @@ def main():
             print("\n👋 Goodbye!")
         return
 
-    # Auto mode - stays running indefinitely
     try:
         backend.start()
         print("Press Ctrl+C to exit")
         print("=" * 50 + "\n")
-        # Keep running forever
         while backend.running:
             time.sleep(1)
     except KeyboardInterrupt:
